@@ -165,83 +165,174 @@ ns.getMockResponse = function (agentType, context, currentContact) {
   }
 };
 
-// ---- 小Q 权限 ----
+// ---- 小Q 记忆系统 ----
 ns.XiaoQMemory = {
-  PERM_KEY: 'xiaoq_perms',
-  STORAGE_KEY: 'xiaoq_memory',
+  PERM_KEY: 'xiaoq_contact_perms',
+  MEM_KEY: 'xiaoq_memory',
+  BUF_PREFIX: 'xiaoq_buf_',
 
-  getPerms() {
-    try { return JSON.parse(localStorage.getItem(this.PERM_KEY)) || { observe: true, push: true }; }
-    catch (e) { return { observe: true, push: true }; }
+  // ── 按联系人权限 ──
+  _allPerms() {
+    try { return JSON.parse(localStorage.getItem(this.PERM_KEY)) || {}; }
+    catch (e) { return {}; }
   },
+  _savePerms(p) { try { localStorage.setItem(this.PERM_KEY, JSON.stringify(p)); } catch (e) {} },
 
-  setPerms(perms) {
-    try { localStorage.setItem(this.PERM_KEY, JSON.stringify(perms)); } catch (e) {}
+  getPerms(contactId) {
+    var p = this._allPerms();
+    return p[contactId] || { observe: true, auto_summarize: true, context_length: 15 };
   },
+  setPerms(contactId, perms) {
+    var p = this._allPerms();
+    p[contactId] = perms;
+    this._savePerms(p);
+  },
+  isObserving(contactId) { return this.getPerms(contactId).observe !== false; },
 
-  isObserveEnabled() { return this.getPerms().observe !== false; },
-  isPushEnabled() { return this.getPerms().push !== false; },
-
+  // ── 主记忆 ──
   load() {
-    try { return JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || this._empty(); }
+    try { return JSON.parse(localStorage.getItem(this.MEM_KEY)) || this._empty(); }
     catch (e) { return this._empty(); }
   },
-
-  save(memory) {
-    memory.last_updated = new Date().toISOString();
-    try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(memory)); } catch (e) {}
+  save(m) {
+    m.last_updated = new Date().toISOString();
+    try { localStorage.setItem(this.MEM_KEY, JSON.stringify(m)); } catch (e) {}
   },
-
   _empty() {
-    return { version: 1, created_at: new Date().toISOString(), last_updated: null,
-      proactive: [], observations: [], stats: { total_pushes: 0, total_observations: 0 } };
+    return { version: 2, created_at: new Date().toISOString(), last_updated: null,
+      contact_memories: {}, stats: { total_messages: 0, total_summaries: 0 } };
   },
 
+  // ── 消息缓冲 & 自动总结 ──
+  _bufKey(contactId) { return this.BUF_PREFIX + contactId; },
+  _loadBuf(contactId) {
+    try { return JSON.parse(localStorage.getItem(this._bufKey(contactId))) || []; }
+    catch (e) { return []; }
+  },
+  _saveBuf(contactId, buf) {
+    try { localStorage.setItem(this._bufKey(contactId), JSON.stringify(buf)); } catch (e) {}
+  },
+
+  // 记录一条消息到缓冲，返回是否触发了自动总结
+  bufferMessage(contactId, msg) {
+    if (!this.isObserving(contactId)) return false;
+    var buf = this._loadBuf(contactId);
+    buf.push({ role: msg.role, sender: msg.sender || '', text: msg.text, ts: Date.now() });
+    this._saveBuf(contactId, buf);
+
+    var m = this.load();
+    if (!m.contact_memories[contactId]) {
+      m.contact_memories[contactId] = { summaries: [], total_messages: 0, last_msg_ts: null };
+    }
+    m.contact_memories[contactId].total_messages++;
+    m.contact_memories[contactId].last_msg_ts = Date.now();
+    m.stats.total_messages++;
+    this.save(m);
+
+    var perms = this.getPerms(contactId);
+    if (perms.auto_summarize !== false && buf.length >= perms.context_length) {
+      this._autoSummarize(contactId, buf, perms.context_length);
+      return true;
+    }
+    return false;
+  },
+
+  // 自动生成内容总结
+  _autoSummarize(contactId, buf, threshold) {
+    var m = this.load();
+    var contact = (ns.CONTACTS || []).find(function (c) { return c.id === contactId; }) || {};
+    var contactName = contact.name || contactId;
+
+    // 规则引擎总结（有 API 时可替换）
+    var allText = buf.map(function (b) { return (b.role === 'self' ? '我' : b.sender || contactName) + '：' + b.text; }).join('\n');
+    var topics = [];
+    var kw = ['周末', '聚餐', '项目', '加班', '吃饭', '旅游', '运动', '电影', '游戏', '工作', '学习', '跳槽', '薪资', '团建', '开会', '方案', '需求'];
+    kw.forEach(function (w) { if (allText.indexOf(w) !== -1) topics.push(w); });
+
+    var selfCount = buf.filter(function (b) { return b.role === 'self'; }).length;
+    var otherCount = buf.length - selfCount;
+    var lastMsgs = buf.slice(-3).map(function (b) { return (b.role === 'self' ? '我' : b.sender || contactName) + '说' + (b.text.length > 20 ? b.text.slice(0, 20) + '...' : b.text); });
+
+    var summary = '最近和' + contactName + '聊了' + buf.length + '条消息' +
+      '（我说' + selfCount + '条，对方' + otherCount + '条）' +
+      (topics.length ? '，涉及' + topics.slice(0, 5).join('、') : '') +
+      '。末尾话题：' + lastMsgs.join('；') + '。';
+
+    if (!m.contact_memories[contactId]) {
+      m.contact_memories[contactId] = { summaries: [], total_messages: buf.length, last_msg_ts: Date.now() };
+    }
+    m.contact_memories[contactId].summaries.push({
+      content: summary,
+      msg_count: buf.length,
+      threshold: threshold,
+      ts: Date.now()
+    });
+    m.stats.total_summaries++;
+    this.save(m);
+
+    // 保留最后 5 条作为上下文衔接
+    var keep = buf.slice(-5);
+    this._saveBuf(contactId, keep);
+  },
+
+  // 手动触发总结
+  forceSummarize(contactId) {
+    var buf = this._loadBuf(contactId);
+    if (buf.length < 2) return null;
+    var perms = this.getPerms(contactId);
+    this._autoSummarize(contactId, buf, Math.max(2, perms.context_length));
+    return this.getContactMemory(contactId);
+  },
+
+  // 获取某联系人的记忆
+  getContactMemory(contactId) {
+    var m = this.load();
+    return m.contact_memories[contactId] || { summaries: [], total_messages: 0, last_msg_ts: null };
+  },
+
+  // 总览
+  getSummary() {
+    var m = this.load();
+    var contacts = {};
+    Object.keys(m.contact_memories).forEach(function (cid) {
+      var cm = m.contact_memories[cid];
+      var c = (ns.CONTACTS || []).find(function (x) { return x.id === cid; });
+      contacts[cid] = {
+        name: c ? c.name : cid,
+        total_messages: cm.total_messages,
+        summaries: cm.summaries.length,
+        last_active: cm.last_msg_ts
+      };
+    });
+    return {
+      total_messages: m.stats.total_messages,
+      total_summaries: m.stats.total_summaries,
+      contacts: contacts,
+      last_updated: m.last_updated
+    };
+  },
+
+  // ── 推送记忆（保留） ──
   logPush(push, contactName) {
-    const m = this.load();
-    m.proactive.push({ type: 'push', push_type: push.type, contact: contactName,
-      content: push.content, priority: push.priority, ts: Date.now(), feedback: null });
-    m.stats.total_pushes++;
-    if (m.proactive.length > 200) m.proactive.splice(0, m.proactive.length - 200);
+    var m = this.load();
+    if (!m.contact_memories._pushes) m.contact_memories._pushes = [];
+    m.contact_memories._pushes.push({ push_type: push.type, contact: contactName,
+      content: push.content, ts: Date.now(), feedback: null });
+    if (m.contact_memories._pushes.length > 200) m.contact_memories._pushes.splice(0, m.contact_memories._pushes.length - 200);
     this.save(m);
   },
 
   logPushFeedback(pushId, feedback) {
-    const m = this.load();
-    const entry = m.proactive.reverse().find(p => p.push_id === pushId || (Date.now() - p.ts < 3600000 && !p.feedback));
-    if (entry) { entry.feedback = feedback; m.proactive.reverse(); this.save(m); }
+    var m = this.load();
+    var arr = m.contact_memories._pushes || [];
+    var entry = arr.reverse().find(function (p) { return (Date.now() - p.ts < 3600000 && !p.feedback); });
+    if (entry) { entry.feedback = feedback; arr.reverse(); this.save(m); }
   },
 
-  logObservation(event, data) {
-    const m = this.load();
-    m.observations.push({ event, ...data, ts: Date.now() });
-    m.stats.total_observations++;
-    if (m.observations.length > 500) m.observations.splice(0, m.observations.length - 500);
-    this.save(m);
-  },
-
-  getSummary() {
-    const m = this.load();
-    const recentObs = m.observations.slice(-50);
-    const chatOpens = recentObs.filter(o => o.event === 'chat_open').length;
-    const msgs = recentObs.filter(o => o.event === 'message_send').length;
-    const agentCalls = recentObs.filter(o => o.event === 'agent_call').length;
-    const recentPushes = m.proactive.filter(p => Date.now() - p.ts < 86400000);
-    const goodFb = recentPushes.filter(p => p.feedback === 'good').length;
-    const badFb = recentPushes.filter(p => p.feedback === 'bad').length;
-
-    const contactActivity = {};
-    recentObs.forEach(o => { const c = o.contact || '未知'; contactActivity[c] = (contactActivity[c] || 0) + 1; });
-    const mostActive = Object.entries(contactActivity).sort((a, b) => b[1] - a[1])[0];
-
-    return {
-      total_observations: m.stats.total_observations,
-      total_pushes: m.stats.total_pushes,
-      recent_24h: { chat_opens: chatOpens, messages: msgs, agent_calls: agentCalls },
-      pushes_24h: { total: recentPushes.length, good_feedback: goodFb, bad_feedback: badFb },
-      most_active_contact: mostActive ? mostActive[0] : null,
-      last_updated: m.last_updated,
-    };
+  isPushEnabled() {
+    // 至少一个联系人的主动推送开启（兼容旧 friend-agent）
+    var p = this._allPerms();
+    return Object.keys(p).some(function (k) { return p[k].push !== false; });
   },
 };
 

@@ -386,5 +386,26 @@ body {
 .toggle input:checked + .toggle-slider { background: #7c5cfc; }
 .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
 
+/* ---- 自然语言画像 ---- */
+.profile-natural { font-size: 13px; color: #333; line-height: 1.7; padding: 4px 0; }
+
+/* ---- 联系人记忆卡片 ---- */
+.xq-contact-card {
+  background: #fff; border-radius: 10px; padding: 14px; margin-bottom: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06); transition: box-shadow 0.15s;
+}
+.xq-contact-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
+.xq-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.xq-card-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 14px; font-weight: 600; flex-shrink: 0;
+}
+.xq-card-info { display: flex; flex-direction: column; }
+.xq-card-name { font-size: 14px; font-weight: 600; color: #333; }
+.xq-card-meta { font-size: 11px; color: #999; }
+.xq-card-summary { font-size: 12px; color: #555; line-height: 1.6; background: #f9f9fb; padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; }
+.xq-card-time { font-size: 11px; color: #ccc; }
+
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }

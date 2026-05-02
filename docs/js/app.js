@@ -95,7 +95,6 @@ function switchContact(id) {
   if (floatMenuOpen) toggleFloatMenu(false);
   if (contact.type !== 'agent') {
     behaviorLogger.log('chat_open', { contact: id });
-    if (XM.isObserveEnabled()) XM.logObservation('chat_open', { contact: id, contact_name: contact.name });
     profileUpdater.tryUpdate(id);
     const pending = friendAgent.getPending(id);
     if (pending.length > 0) showPushToast(pending[0]);
@@ -122,65 +121,71 @@ function renderXiaoQDashboard() {
   const container = $('messages'); if (!container) return;
   const summary = XM.getSummary();
   const mem = XM.load();
-  const recentPushes = mem.proactive.slice(-10).reverse();
-  const recentObs = mem.observations.slice(-10).reverse();
+  const pushes = (mem.contact_memories._pushes || []).slice(-10).reverse();
 
-  let pushHtml = '';
-  if (recentPushes.length === 0) {
-    pushHtml = '<div class="xq-empty">暂无主动提醒记录</div>';
+  var contactCards = '';
+  var contactEntries = Object.entries(summary.contacts);
+  if (contactEntries.length === 0) {
+    contactCards = '<div class="xq-empty">暂无授权联系人，请先在设置中为好友开启监测授权</div>';
   } else {
-    pushHtml = recentPushes.map(p => {
-      const fbIcon = p.feedback === 'good' ? '👍' : p.feedback === 'bad' ? '👎' : '';
-      const fbColor = p.feedback === 'good' ? '#52c41a' : p.feedback === 'bad' ? '#ff4d4f' : '';
-      return `<div class="xq-log-item">
-        <span>${({ reply_suggest:'💬',reminder:'⏰',reconnect:'🔗',topic_suggest:'💡',general:'🤖' })[p.push_type] || '🤖'}</span>
-        <span class="xq-log-text">${escapeHtml(p.content)}</span>
-        ${fbIcon ? `<span style="color:${fbColor}">${fbIcon}</span>` : ''}
-        <span class="xq-log-time">${formatTime(p.ts)}</span>
-      </div>`;
+    contactCards = contactEntries.map(function (e) {
+      var cid = e[0], cd = e[1];
+      var cm = mem.contact_memories[cid] || {};
+      var lastSummary = cm.summaries ? cm.summaries[cm.summaries.length - 1] : null;
+      var contact = C.find(function (c) { return c.id === cid; });
+      return '<div class="xq-contact-card" onclick="QQAgent.switchContact(\'' + cid + '\')" style="cursor:pointer;">' +
+        '<div class="xq-card-header">' +
+          '<div class="xq-card-avatar" style="background:' + (contact ? contact.avatarBg : '#ccc') + ';">' + (contact ? contact.avatar : '?') + '</div>' +
+          '<div class="xq-card-info">' +
+            '<span class="xq-card-name">' + cd.name + '</span>' +
+            '<span class="xq-card-meta">' + cd.total_messages + ' 条消息 · ' + cd.summaries + ' 次总结</span>' +
+          '</div>' +
+        '</div>' +
+        (lastSummary ? '<div class="xq-card-summary">📝 ' + escapeHtml(lastSummary.content) + '</div>' : '') +
+        '<div class="xq-card-time">最近更新：' + (cd.last_active ? formatTime(cd.last_active) : '暂无') + '</div>' +
+      '</div>';
     }).join('');
   }
 
-  let obsHtml = '';
-  if (recentObs.length === 0) {
-    obsHtml = '<div class="xq-empty">暂无操作记录</div>';
+  var pushHtml = '';
+  if (pushes.length === 0) {
+    pushHtml = '<div class="xq-empty">暂无推送记录</div>';
   } else {
-    obsHtml = recentObs.map(o => {
-      const icons = { chat_open: '📂', chat_close: '📁', message_send: '💬', agent_call: '🤖' };
-      const labels = { chat_open: '打开了聊天', chat_close: '关闭了聊天', message_send: '发送了消息', agent_call: '使用了Agent' };
-      return `<div class="xq-log-item">
-        <span>${icons[o.event] || '📌'}</span>
-        <span class="xq-log-text">${labels[o.event] || o.event} — ${o.contact_name || o.contact || ''}</span>
-        <span class="xq-log-time">${formatTime(o.ts)}</span>
-      </div>`;
+    pushHtml = pushes.map(function (p) {
+      var fbIcon = p.feedback === 'good' ? '👍' : p.feedback === 'bad' ? '👎' : '';
+      return '<div class="xq-log-item">' +
+        '<span>' + (({ reply_suggest: '💬', reminder: '⏰', reconnect: '🔗', topic_suggest: '💡', general: '🤖' })[p.push_type] || '🤖') + '</span>' +
+        '<span class="xq-log-text">' + escapeHtml(p.content) + '</span>' +
+        (fbIcon ? '<span>' + fbIcon + '</span>' : '') +
+        '<span class="xq-log-time">' + formatTime(p.ts) + '</span>' +
+      '</div>';
     }).join('');
   }
 
-  container.innerHTML = `
-    <div class="xq-dashboard">
-      <div class="xq-welcome">
-        <div class="xq-avatar" style="background:#7c5cfc;">Q</div>
-        <div class="xq-intro">
-          <h3>你好，我是小Q</h3>
-          <p>你的QQ智能管家。我会记住你在QQ上的所有操作，在需要时主动提醒你。</p>
-        </div>
-      </div>
-      <div class="xq-stats">
-        <div class="xq-stat"><span class="xq-stat-num">${summary.total_observations}</span><span class="xq-stat-label">总操作记录</span></div>
-        <div class="xq-stat"><span class="xq-stat-num">${summary.total_pushes}</span><span class="xq-stat-label">主动提醒</span></div>
-        <div class="xq-stat"><span class="xq-stat-num">${summary.pushes_24h.good_feedback}</span><span class="xq-stat-label">采纳建议</span></div>
-        <div class="xq-stat"><span class="xq-stat-num">${summary.most_active_contact || '—'}</span><span class="xq-stat-label">最常联系</span></div>
-      </div>
-      <div class="xq-section">
-        <h4>📋 主动提醒记录</h4>
-        ${pushHtml}
-      </div>
-      <div class="xq-section">
-        <h4>👁 操作记忆</h4>
-        ${obsHtml}
-      </div>
-    </div>
-  `;
+  container.innerHTML =
+    '<div class="xq-dashboard">' +
+      '<div class="xq-welcome">' +
+        '<div class="xq-avatar" style="background:#7c5cfc;">Q</div>' +
+        '<div class="xq-intro">' +
+          '<h3>你好，我是小Q</h3>' +
+          '<p>你的QQ智能管家。我会记住授权好友的所有对话，并在消息积累到阈值时自动生成内容总结。</p>' +
+        '</div>' +
+      '</div>' +
+      '<div class="xq-stats">' +
+        '<div class="xq-stat"><span class="xq-stat-num">' + summary.total_messages + '</span><span class="xq-stat-label">总记录消息</span></div>' +
+        '<div class="xq-stat"><span class="xq-stat-num">' + summary.total_summaries + '</span><span class="xq-stat-label">内容总结</span></div>' +
+        '<div class="xq-stat"><span class="xq-stat-num">' + contactEntries.length + '</span><span class="xq-stat-label">授权联系人</span></div>' +
+        '<div class="xq-stat"><span class="xq-stat-num">' + pushes.length + '</span><span class="xq-stat-label">近期推送</span></div>' +
+      '</div>' +
+      '<div class="xq-section">' +
+        '<h4>👥 联系人记忆</h4>' +
+        contactCards +
+      '</div>' +
+      '<div class="xq-section">' +
+        '<h4>📋 近期推送</h4>' +
+        pushHtml +
+      '</div>' +
+    '</div>';
   container.scrollTop = container.scrollHeight;
 }
 
@@ -297,7 +302,6 @@ async function runAgent(agentType) {
     messages.push({ type: 'agent', text: replyText, time: Date.now(), actions });
     renderMessages(); saveMessages(); hideToast();
     behaviorLogger.log('agent_call', { agent: agentType, contact: currentContact });
-    if (XM.isObserveEnabled()) XM.logObservation('agent_call', { agent: agentType, contact: currentContact, contact_name: (C.find(c => c.id === currentContact) || {}).name });
   } catch (err) {
     messages = messages.filter(m => m.type !== 'typing');
     messages.push({ type: 'agent', text: `请求失败: ${err.message}\n请检查 API 地址和 Key。`, time: Date.now() });
@@ -381,7 +385,7 @@ async function sendMessage() {
   localStorage.removeItem('draft_' + currentContact);
   renderMessages(); saveMessages();
   behaviorLogger.log('message_send', { contact: currentContact, length: text.length });
-  if (XM.isObserveEnabled()) XM.logObservation('message_send', { contact: currentContact, contact_name: contact.name, length: text.length });
+  XM.bufferMessage(currentContact, { role: 'self', text: text });
 
   if (contact.type === 'friend') {
     await sleep(600 + Math.random() * 800);
@@ -390,6 +394,7 @@ async function sendMessage() {
     autoReplyIndex[currentContact] = idx + 1;
     messages.push({ type: 'other', sender: contact.name, text: reply, time: Date.now(), contact: currentContact });
     renderMessages(); saveMessages();
+    XM.bufferMessage(currentContact, { role: 'other', sender: contact.name, text: reply });
     profileManager.updateProfile(currentContact, {
       interaction_history: { total_messages: (profileManager.getProfile(currentContact).interaction_history.total_messages || 0) + 2, last_active_date: new Date().toISOString().slice(0, 10) },
     });
@@ -406,12 +411,9 @@ function openSettings() {
   $('apiUrl').value = localStorage.getItem('qqagent_api_url') || '';
   $('apiKey').value = localStorage.getItem('qqagent_api_key') || '';
   $('modelName').value = localStorage.getItem('qqagent_model') || '';
-  var p = XM.getPerms();
-  if ($('permObserve')) $('permObserve').checked = p.observe !== false;
-  if ($('permPush')) $('permPush').checked = p.push !== false;
-  updateProfilePreview();
-  const infoEl = $('faSettingsInfo');
-  if (infoEl) infoEl.textContent = `检查间隔：${friendAgent.checkInterval / 1000}秒 | 推送队列：${friendAgent.queue.filter(p => !p.dismissed).length}条 | 今日限额：${friendAgent.maxDailyPushes}条`;
+  renderProfileNatural();
+  renderPermSection();
+  updateFAInfo();
 }
 
 function closeSettings() { $('settingsModal').classList.remove('show'); }
@@ -421,47 +423,130 @@ function saveSettings() {
   localStorage.setItem('qqagent_api_key', $('apiKey').value.trim());
   localStorage.setItem('qqagent_model', $('modelName').value.trim());
   const mockEl = $('mockNote'); if (mockEl) mockEl.style.display = $('apiUrl').value.trim() ? 'none' : 'block';
+  // 保存上下文长度
+  if (!isAgentContact()) {
+    var el = $('xqContextLen');
+    if (el) {
+      var p = XM.getPerms(currentContact);
+      p.context_length = parseInt(el.value) || 15;
+      XM.setPerms(currentContact, p);
+    }
+  }
   closeSettings();
 }
 
-function updateProfilePreview() {
-  if (isAgentContact()) { $('profilePreview').textContent = JSON.stringify(XM.getSummary(), null, 2); return; }
-  const p = profileManager.getProfile(currentContact);
-  const el = $('profilePreview'); if (el) el.textContent = JSON.stringify(p, null, 2);
+function renderProfileNatural() {
+  var el = $('profileNatural'); if (!el) return;
+  var titleEl = $('settingsProfileTitle');
+  if (isAgentContact()) {
+    if (titleEl) titleEl.innerHTML = '小Q 总览';
+    var s = XM.getSummary();
+    var contactList = Object.values(s.contacts).map(function(c){return c.name + '(' + c.total_messages + '条消息·' + c.summaries + '次总结)';}).join('、') || '暂无';
+    el.innerHTML = '<p style="font-size:13px;color:#333;line-height:1.7;">小Q已记录 <b>' + s.total_messages + '</b> 条消息，生成 <b>' + s.total_summaries + '</b> 次内容总结。</p>' +
+      '<p style="font-size:12px;color:#888;margin-top:4px;">覆盖联系人：' + contactList + '</p>';
+    return;
+  }
+  if (titleEl) titleEl.innerHTML = '联系人画像 <button class="btn btn-default" style="font-size:11px;padding:2px 8px;margin-left:8px;" onclick="QQAgent.resetProfile()">重置画像</button>';
+  var ps = profileManager.getProfileSummary(currentContact);
+  var contact = C.find(function(c) { return c.id === currentContact; });
+  var rel = { close_friend: '密友', friend: '朋友', group: '群聊', assistant: '助手' };
+  var parts = [
+    (contact ? contact.name : currentContact) + '是你的' + (rel[ps.relationship] || ps.relationship || '联系人'),
+    ps.personality ? '。' + ps.personality : '',
+    ps.topics && ps.topics !== '日常' ? '。常聊话题包括' + ps.topics : '',
+    ps.tips ? '。沟通建议：' + ps.tips : ''
+  ];
+  el.innerHTML = '<p style="font-size:13px;color:#333;line-height:1.7;">' + parts.join('') + '</p>';
 }
+
+function renderPermSection() {
+  var el = $('permSection'); if (!el) return;
+  if (isAgentContact()) { el.innerHTML = '<div class="hint">小Q 自身不需要授权</div>'; return; }
+  var perms = XM.getPerms(currentContact);
+  el.innerHTML =
+    '<div class="perm-row">' +
+      '<div class="perm-info">' +
+        '<span class="perm-label">记录聊天消息</span>' +
+        '<span class="perm-desc">开启后小Q会记住你与' + ((C.find(function(c){return c.id===currentContact;})||{}).name||'该联系人') + '的所有对话</span>' +
+      '</div>' +
+      '<label class="toggle">' +
+        '<input type="checkbox" id="permObserve" ' + (perms.observe !== false ? 'checked' : '') + ' onchange="QQAgent.toggleContactPerm(\'observe\')">' +
+        '<span class="toggle-slider"></span>' +
+      '</label>' +
+    '</div>' +
+    '<div class="perm-row">' +
+      '<div class="perm-info">' +
+        '<span class="perm-label">自动内容总结</span>' +
+        '<span class="perm-desc">消息达到阈值后自动生成对话总结</span>' +
+      '</div>' +
+      '<label class="toggle">' +
+        '<input type="checkbox" id="permSummarize" ' + (perms.auto_summarize !== false ? 'checked' : '') + ' onchange="QQAgent.toggleContactPerm(\'auto_summarize\')">' +
+        '<span class="toggle-slider"></span>' +
+      '</label>' +
+    '</div>' +
+    '<div class="perm-row" style="border:none;">' +
+      '<div class="perm-info">' +
+        '<span class="perm-label">上下文长度</span>' +
+        '<span class="perm-desc">累计多少条消息后触发自动总结</span>' +
+      '</div>' +
+      '<input type="number" id="xqContextLen" value="' + (perms.context_length || 15) + '" min="5" max="100" style="width:60px;text-align:center;border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:14px;">' +
+    '</div>';
+}
+
+function toggleContactPerm(type) {
+  var perms = XM.getPerms(currentContact);
+  if (type === 'observe') {
+    perms.observe = !perms.observe;
+    if ($('permObserve')) $('permObserve').checked = perms.observe;
+    if (!perms.observe) perms.auto_summarize = false;
+    showToast(perms.observe ? '已授权小Q记录' + ((C.find(function(c){return c.id===currentContact;})||{}).name||'') + '的消息' : '已停止记录');
+  } else if (type === 'auto_summarize') {
+    perms.auto_summarize = !perms.auto_summarize;
+    if (perms.auto_summarize) perms.observe = true;
+    if ($('permSummarize')) $('permSummarize').checked = perms.auto_summarize;
+    if ($('permObserve')) $('permObserve').checked = perms.observe;
+    showToast(perms.auto_summarize ? '已开启自动内容总结' : '已关闭自动内容总结');
+  }
+  XM.setPerms(currentContact, perms);
+  renderPermSection();
+}
+
+function updateFAInfo() {
+  var el = $('faSettingsInfo'); if (!el) return;
+  if (isAgentContact()) {
+    var s = XM.getSummary();
+    el.textContent = '已记录 ' + s.total_messages + ' 条消息 · 生成 ' + s.total_summaries + ' 次总结';
+    return;
+  }
+  var mem = XM.getContactMemory(currentContact);
+  var buf = (function() {
+    try { return JSON.parse(localStorage.getItem('xiaoq_buf_' + currentContact) || '[]'); }
+    catch(e) { return []; }
+  })();
+  el.textContent = '已记录 ' + mem.total_messages + ' 条消息 · 缓冲 ' + buf.length + ' 条 · 总结 ' + mem.summaries.length + ' 次';
+}
+
 function updateProfilePreviewIfOpen() {
-  if ($('settingsModal').classList.contains('show')) updateProfilePreview();
+  if ($('settingsModal').classList.contains('show')) {
+    renderProfileNatural();
+    renderPermSection();
+    updateFAInfo();
+  }
 }
 
 function resetProfile() {
   if (isAgentContact()) { showToast('小Q记忆无法重置'); return; }
   profileManager.updateProfile(currentContact, profileManager.createDefault(currentContact));
-  updateProfilePreview(); updateChatHeaderHint(); showToast('画像已重置');
+  renderProfileNatural(); updateChatHeaderHint(); showToast('画像已重置');
 }
 
 function resetAllData() {
   if (!confirm('确定清除全部数据？包括画像、日志、对话历史、推送队列。')) return;
-  const keys = ['qqagent_api_url', 'qqagent_api_key', 'qqagent_model'];
-  const vals = keys.map(k => localStorage.getItem(k));
+  var keys = ['qqagent_api_url', 'qqagent_api_key', 'qqagent_model'];
+  var vals = keys.map(function(k) { return localStorage.getItem(k); });
   localStorage.clear();
-  keys.forEach((k, i) => { if (vals[i]) localStorage.setItem(k, vals[i]); });
+  keys.forEach(function(k, i) { if (vals[i]) localStorage.setItem(k, vals[i]); });
   location.reload();
-}
-
-// ---- 小Q 权限 ----
-function togglePerm(type) {
-  const perms = XM.getPerms();
-  if (type === 'observe') {
-    perms.observe = !perms.observe;
-    $('permObserve').checked = perms.observe;
-    showToast(perms.observe ? '已开启行为监测' : '已关闭行为监测');
-  } else {
-    perms.push = !perms.push;
-    $('permPush').checked = perms.push;
-    if (!perms.push) { friendAgent.stop(); } else { friendAgent.start(); }
-    showToast(perms.push ? '已开启主动推送' : '已关闭主动推送');
-  }
-  XM.setPerms(perms);
 }
 
 // ---- Persistence ----
@@ -483,7 +568,7 @@ Object.assign(ns, {
   switchContact, sendMessage, runAgent, handleKey, useReply,
   dismissCurrentPush, showPushPanel, feedbackPush,
   openSettings, closeSettings, saveSettings, resetProfile, resetAllData, clearChat,
-  togglePerm,
+  toggleContactPerm,
 });
 window.switchContact = switchContact;
 window.sendMessage = sendMessage;
@@ -518,7 +603,7 @@ async function init() {
     if (!XM.isPushEnabled()) return;
     if (contactId === currentContact) showPushToast(push);
     updateNotifyBadge(); renderContacts();
-    const c = C.find(x => x.id === contactId);
+    var c = C.find(function(x) { return x.id === contactId; });
     XM.logPush(push, c ? c.name : contactId);
   };
   friendAgent.onQueueChanged = () => { updateNotifyBadge(); renderContacts(); };

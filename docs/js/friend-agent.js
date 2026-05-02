@@ -57,7 +57,7 @@ ns.FriendAgent = class {
     const todayPushes = this.queue.filter(p => p.ts > todayCutoff && !p.dismissed).length;
     if (todayPushes >= this.maxDailyPushes) { if (this.onStatusChange) this.onStatusChange('idle'); return; }
 
-    const contacts = ns.CONTACTS || [];
+    const contacts = (ns.CONTACTS || []).filter(function(c) { return c.type !== 'agent' && ns.XiaoQMemory.isObserving(c.id); });
     for (const contact of contacts) {
       const contactPushes = this.queue.filter(p => p.contact === contact.id && p.ts > todayCutoff && !p.dismissed).length;
       if (contactPushes >= this.maxPerContact) continue;

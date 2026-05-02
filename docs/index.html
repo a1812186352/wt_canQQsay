@@ -91,34 +91,14 @@
     <input type="text" id="modelName" placeholder="deepseek-chat">
     <div class="hint">DeepSeek: deepseek-chat / 通义千问: qwen-plus</div>
 
-    <h4>当前联系人画像 <button class="btn btn-default" style="font-size:11px;padding:2px 8px;margin-left:8px;" onclick="resetProfile()">重置画像</button></h4>
-    <div class="profile-preview" id="profilePreview">选择联系人后显示...</div>
+    <h4 id="settingsProfileTitle">联系人画像 <button class="btn btn-default" style="font-size:11px;padding:2px 8px;margin-left:8px;" onclick="QQAgent.resetProfile()">重置画像</button></h4>
+    <div class="profile-natural" id="profileNatural">选择联系人后显示...</div>
 
-    <h4>小Q 权限设置</h4>
-    <div class="perm-row">
-      <div class="perm-info">
-        <span class="perm-label">行为监测</span>
-        <span class="perm-desc">记录聊天打开、消息发送、Agent 调用等操作</span>
-      </div>
-      <label class="toggle">
-        <input type="checkbox" id="permObserve" checked onchange="QQAgent.togglePerm('observe')">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-    <div class="perm-row">
-      <div class="perm-info">
-        <span class="perm-label">主动推送</span>
-        <span class="perm-desc">定时分析联系人行为，推送回复提醒和话题建议</span>
-      </div>
-      <label class="toggle">
-        <input type="checkbox" id="permPush" checked onchange="QQAgent.togglePerm('push')">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
+    <h4>小Q 监测授权</h4>
+    <div id="permSection"></div>
 
-    <h4>好友Agent</h4>
-    <div class="hint" id="faSettingsInfo">检查间隔：60秒 | 推送队列：0条</div>
-    <div class="hint">好友Agent 定时分析联系人行为，主动推送回复提醒、话题建议。</div>
+    <h4>小Q 状态</h4>
+    <div class="hint" id="faSettingsInfo">小Q 静默记录中</div>
 
     <div class="modal-actions">
       <button class="btn btn-danger" style="margin-right:auto;" onclick="resetAllData()">重置全部数据</button>
