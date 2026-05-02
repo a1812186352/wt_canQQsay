@@ -16,15 +16,19 @@
 ## 快速开始
 
 ```bash
-# 1. 启动
+# 1. 进入 demo 目录并启动本地服务
 cd demo
-python -m http.server 8080     # 或 npx serve demo
-
-# 2. 浏览器打开
-open http://localhost:8080
+python -m http.server 8080
+# 如果 python 不可用，用: npx serve demo
 ```
 
-**无需构建、无需后端**，纯静态 HTML/CSS/JS。
+```bash
+# 2. 浏览器打开
+# macOS:   open http://localhost:8080
+# Windows: start http://localhost:8080
+```
+
+> 无需构建、无需后端，纯静态 HTML/CSS/JS。未接入 API 时使用内置 Mock 数据即可体验全部功能。
 
 ## 接入 LLM API
 
@@ -68,11 +72,17 @@ demo/
 ## 核心设计
 
 ```
-浏览器端 ── localStorage ── 画像存储 + 行为日志 + 对话历史
-    │
-    ├── 聊天 Agent (同步) ── 悬浮球触发 → LLM API
-    │
-    └── 好友 Agent (异步) ── 60s 定时分析 → 推送决策 → Toast 通知
+┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
+│  聊天 Agent  │     │   好友 Agent      │     │  LLM API    │
+│  悬浮球触发   │────▶│   60s 定时分析    │────▶│  DeepSeek   │
+│  回复/优化/  │     │   推送决策/反馈  │     │  等兼容接口  │
+│  精华提炼    │     └──────────────────┘     └─────────────┘
+└─────────────┘            │                        ▲
+       │                   ▼                        │
+       │          ┌──────────────────┐              │
+       └─────────▶│   localStorage   │◀─────────────┘
+                  │  画像/日志/历史   │
+                  └──────────────────┘
 ```
 
 全部数据本地存储，不上传服务器。仅 LLM 调用走外部 API。
