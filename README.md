@@ -18,7 +18,7 @@
 
 ```bash
 # 1. 进入 demo 目录
-cd demo
+cd docs
 
 # 2. 启动本地服务（任选一种）
 python -m http.server 8080
@@ -30,14 +30,14 @@ python -m http.server 8080
 # 地址：http://localhost:8080
 ```
 
-> **注意：必须在 demo 目录下启动服务器，否则 CSS 和 JS 会 404。**  
+> **注意：必须在 docs 目录下启动服务器，否则 CSS 和 JS 会 404。**  
 > 无需构建、无需后端，纯静态 HTML/CSS/JS。未接入 API 时使用内置 Mock 数据即可体验全部功能。
 
 ### 启动遇到 localhost 拒绝连接？
 
 按以下顺序排查：
 
-1. **确认已进入 demo 目录** — 必须在 `demo/` 下启动，不是在项目根目录
+1. **确认已进入 demo 目录** — 必须在 `docs/` 下启动，不是在项目根目录
 2. **Python 命令不对** — Windows 上 `python` 可能跳转 Microsoft Store，试试 `python3` 或 `py -3`
 3. **端口被占用** — 换一个端口：`python -m http.server 9090`
 4. **没有 Python** — 安装 [Python](https://www.python.org/downloads/) 或装 [Node.js](https://nodejs.org) 后执行 `npx serve . -p 8080`
@@ -47,13 +47,13 @@ python -m http.server 8080
 
 1. 打开 `https://github.com/a1812186352/wt_canQQsay/settings/pages`
 2. **Source**: 选 `Deploy from a branch`
-3. **Branch**: 选 `main`，文件夹选 `/demo`
+3. **Branch**: 选 `main`，文件夹选 `/docs`
 4. 点 **Save**，等 1-2 分钟
 5. 访问 `https://a1812186352.github.io/wt_canQQsay/`
 
 ## 配置说明
 
-所有可修改的配置都以 JSON 文件形式存放在 `demo/` 下，**运行时直接加载，修改后刷新浏览器即可生效**：
+所有可修改的配置都以 JSON 文件形式存放在 `docs/` 下，**运行时直接加载，修改后刷新浏览器即可生效**：
 
 | 配置项 | 文件 | 说明 |
 |--------|------|------|
@@ -77,7 +77,7 @@ python -m http.server 8080
 ## 项目结构
 
 ```
-demo/
+docs/
 ├── index.html               # 页面壳
 ├── styles.css               # 样式
 ├── js/

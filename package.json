@@ -4,7 +4,7 @@
   "description": "QQ智能Agent演示 — 内嵌画像系统、行为感知、主动推送的多Agent聊天助手",
   "private": true,
   "scripts": {
-    "start": "npx serve demo",
+    "start": "npx serve docs",
     "test": "npx playwright test"
   },
   "devDependencies": {
