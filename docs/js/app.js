@@ -172,7 +172,6 @@ function renderXiaoQDashboard() {
         '</div>' +
       '</div>' +
       '<div class="xq-stats">' +
-        '<div class="xq-stat"><span class="xq-stat-num">' + summary.total_messages + '</span><span class="xq-stat-label">总记录消息</span></div>' +
         '<div class="xq-stat"><span class="xq-stat-num">' + summary.total_summaries + '</span><span class="xq-stat-label">内容总结</span></div>' +
         '<div class="xq-stat"><span class="xq-stat-num">' + contactEntries.length + '</span><span class="xq-stat-label">授权联系人</span></div>' +
         '<div class="xq-stat"><span class="xq-stat-num">' + pushes.length + '</span><span class="xq-stat-label">近期推送</span></div>' +

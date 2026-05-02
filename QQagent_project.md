@@ -304,17 +304,10 @@
 
 ## 十、Demo 快速体验
 
-在 `demo/` 目录下提供了 QQ Agent 的交互 Demo：
+在 `docs/` 目录下提供了 QQ Agent 的交互 Demo，已部署到 GitHub Pages：
 
-- `demo/index.html` — 模拟 QQ 聊天界面的 Agent 对话体验
-- 打开后在 **设置面板** 中填入你的 Agent API 地址即可开始测试
-- 支持模拟私聊回复建议、话术优化、群聊精华提炼三个核心场景
-
-```bash
-# 启动方式（任选一种）
-cd demo && python -m http.server 8080
-# 或
-cd demo && npx serve .
-```
-
-打开浏览器访问 `http://localhost:8080`，点击右上角齿轮图标配置 API 地址。
+- **在线体验**：`https://a1812186352.github.io/wt_canQQsay/`
+- **本地运行**：`cd docs && python -m http.server 8080`
+- 内置**小Q 智能管家**：按联系人授权后自动记录对话，消息达阈值自动生成内容总结
+- 支持模拟聊天智能回复、话术优化、群聊精华提炼
+- 点击 ⚙ 齿轮可配置 LLM API，未配置时使用内置 Mock 数据

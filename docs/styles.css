@@ -346,7 +346,7 @@ body {
 .xq-intro h3 { font-size: 16px; margin-bottom: 4px; color: #333; }
 .xq-intro p { font-size: 13px; color: #666; line-height: 1.5; }
 .xq-stats {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
   margin-bottom: 16px;
 }
 .xq-stat {
