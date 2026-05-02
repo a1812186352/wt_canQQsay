@@ -9,6 +9,11 @@ window.QQAgent = window.QQAgent || {};
 // ---- 联系人定义 ----
 ns.CONTACTS = [
   {
+    id: 'xiaoq', name: '小Q', avatar: 'Q', avatarBg: '#7c5cfc', type: 'agent',
+    opening: '你好，我是小Q — 你的QQ智能助手。我会记住你在QQ上的一切操作，在需要时主动提醒你。',
+    autoReplies: [],
+  },
+  {
     id: 'xiaoming', name: '小明', avatar: '明', avatarBg: '#12b7f5', type: 'friend',
     opening: '周末有空吗？好久没聚了，一起出来吃个饭怎么样？🌶️',
     autoReplies: ['哈哈好呀，那去哪吃？', '我都可以，你定吧！', '行，那就周六晚上吧，我订个位', 'OK，到时候见！'],
@@ -50,6 +55,15 @@ ns.loadAgentRules = async function () {
 
 // ---- 硬编码画像模板（fallback：file:// 协议或 fetch 失败时使用） ----
 ns.DEFAULT_PROFILES = {
+  xiaoq: {
+    contact_id: 'xiaoq', contact_name: '小Q', contact_type: 'agent',
+    created_at: '2026-05-02', last_updated: new Date().toISOString(),
+    basic_info: { avatar_color: '#7c5cfc', relationship: 'assistant', tags: ['AI助手', '记忆管家'] },
+    communication_style: { tone: 'professional', emoji_usage: 'low', preferred_topics: ['提醒', '总结', '建议'], avoided_topics: [] },
+    interaction_history: { total_messages: 0, last_active_date: null, frequent_times: [], recent_topics: [] },
+    preferences: { notification_priority: 'high', auto_reply_style: 'helpful' },
+    agent_insights: { personality_summary: '你的QQ智能管家，记住你在QQ上的一切，在需要时主动提醒', communication_tips: '它会静默观察所有操作，只在需要时出现', last_recommendation: null },
+  },
   xiaoming: {
     contact_id: 'xiaoming', contact_name: '小明', contact_type: 'friend',
     created_at: '2026-05-02', last_updated: new Date().toISOString(),
@@ -149,6 +163,73 @@ ns.getMockResponse = function (agentType, context, currentContact) {
     }
     default: return { raw: '收到，请选择需要使用的 Agent 功能。' };
   }
+};
+
+// ---- 小Q 记忆系统 ----
+ns.XiaoQMemory = {
+  STORAGE_KEY: 'xiaoq_memory',
+
+  load() {
+    try { return JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || this._empty(); }
+    catch (e) { return this._empty(); }
+  },
+
+  save(memory) {
+    memory.last_updated = new Date().toISOString();
+    try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(memory)); } catch (e) {}
+  },
+
+  _empty() {
+    return { version: 1, created_at: new Date().toISOString(), last_updated: null,
+      proactive: [], observations: [], stats: { total_pushes: 0, total_observations: 0 } };
+  },
+
+  logPush(push, contactName) {
+    const m = this.load();
+    m.proactive.push({ type: 'push', push_type: push.type, contact: contactName,
+      content: push.content, priority: push.priority, ts: Date.now(), feedback: null });
+    m.stats.total_pushes++;
+    if (m.proactive.length > 200) m.proactive.splice(0, m.proactive.length - 200);
+    this.save(m);
+  },
+
+  logPushFeedback(pushId, feedback) {
+    const m = this.load();
+    const entry = m.proactive.reverse().find(p => p.push_id === pushId || (Date.now() - p.ts < 3600000 && !p.feedback));
+    if (entry) { entry.feedback = feedback; m.proactive.reverse(); this.save(m); }
+  },
+
+  logObservation(event, data) {
+    const m = this.load();
+    m.observations.push({ event, ...data, ts: Date.now() });
+    m.stats.total_observations++;
+    if (m.observations.length > 500) m.observations.splice(0, m.observations.length - 500);
+    this.save(m);
+  },
+
+  getSummary() {
+    const m = this.load();
+    const recentObs = m.observations.slice(-50);
+    const chatOpens = recentObs.filter(o => o.event === 'chat_open').length;
+    const msgs = recentObs.filter(o => o.event === 'message_send').length;
+    const agentCalls = recentObs.filter(o => o.event === 'agent_call').length;
+    const recentPushes = m.proactive.filter(p => Date.now() - p.ts < 86400000);
+    const goodFb = recentPushes.filter(p => p.feedback === 'good').length;
+    const badFb = recentPushes.filter(p => p.feedback === 'bad').length;
+
+    const contactActivity = {};
+    recentObs.forEach(o => { const c = o.contact || '未知'; contactActivity[c] = (contactActivity[c] || 0) + 1; });
+    const mostActive = Object.entries(contactActivity).sort((a, b) => b[1] - a[1])[0];
+
+    return {
+      total_observations: m.stats.total_observations,
+      total_pushes: m.stats.total_pushes,
+      recent_24h: { chat_opens: chatOpens, messages: msgs, agent_calls: agentCalls },
+      pushes_24h: { total: recentPushes.length, good_feedback: goodFb, bad_feedback: badFb },
+      most_active_contact: mostActive ? mostActive[0] : null,
+      last_updated: m.last_updated,
+    };
+  },
 };
 
 })(window.QQAgent);

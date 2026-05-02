@@ -6,6 +6,7 @@
 
 | 功能 | 说明 |
 |------|------|
+| 小Q 智能管家 | 常驻好友栏，记住你在QQ上的所有操作和主动提醒，汇总为记忆面板 |
 | 聊天 Agent | 智能回复建议、话术优化、聊天精华提炼（悬浮球一键触发） |
 | 好友 Agent | 后台定时分析行为 → 主动推送提醒（待回复消息、话题建议等） |
 | 画像系统 | 自动学习联系人偏好、沟通风格、常聊话题，注入回复 prompt |
@@ -31,6 +32,25 @@ python -m http.server 8080
 
 > **注意：必须在 demo 目录下启动服务器，否则 CSS 和 JS 会 404。**  
 > 无需构建、无需后端，纯静态 HTML/CSS/JS。未接入 API 时使用内置 Mock 数据即可体验全部功能。
+
+### 启动遇到 localhost 拒绝连接？
+
+按以下顺序排查：
+
+1. **确认已进入 demo 目录** — 必须在 `demo/` 下启动，不是在项目根目录
+2. **Python 命令不对** — Windows 上 `python` 可能跳转 Microsoft Store，试试 `python3` 或 `py -3`
+3. **端口被占用** — 换一个端口：`python -m http.server 9090`
+4. **没有 Python** — 安装 [Python](https://www.python.org/downloads/) 或装 [Node.js](https://nodejs.org) 后执行 `npx serve . -p 8080`
+5. **杀毒软件/防火墙拦截** — 临时关闭防火墙试试
+
+## 部署到 GitHub Pages
+
+已内置 `.github/workflows/pages.yml`，操作步骤：
+
+1. 打开 `https://github.com/<你的用户名>/wt_canQQsay/settings/pages`
+2. Source 选 **"GitHub Actions"**
+3. 推送代码到 `main` 分支即自动部署
+4. 访问 `https://<你的用户名>.github.io/wt_canQQsay/`
 
 ## 配置说明
 
@@ -68,7 +88,8 @@ demo/
 │   ├── behavior-logger.js    # 行为事件日志
 │   ├── friend-agent.js       # 好友Agent（定时分析+主动推送）
 │   └── profile-updater.js    # 画像自动更新
-├── profiles/                 # 联系人画像模板（JSON 参考）
+├── profiles/                 # 联系人画像（运行时 fetch 加载，修改即生效）
+│   ├── xiaoq.json            # 小Q 智能管家
 │   ├── xiaoming.json
 │   ├── xiaohong.json
 │   └── project_group.json
