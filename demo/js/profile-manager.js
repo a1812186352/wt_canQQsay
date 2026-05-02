@@ -19,6 +19,10 @@ function deepMerge(target, source) {
 }
 
 ns.ProfileManager = class {
+  constructor(defaultProfiles) {
+    this.defaultProfiles = defaultProfiles || ns.DEFAULT_PROFILES;
+  }
+
   getProfile(contactId) {
     try {
       const raw = localStorage.getItem('profile_' + contactId);
@@ -36,7 +40,7 @@ ns.ProfileManager = class {
   }
 
   createDefault(contactId) {
-    const template = ns.DEFAULT_PROFILES[contactId];
+    const template = this.defaultProfiles[contactId];
     if (template) return { ...template, last_updated: new Date().toISOString() };
 
     const contact = (ns.CONTACTS || []).find(c => c.id === contactId) || {};

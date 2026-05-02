@@ -15,11 +15,11 @@ let autoReplyIndex = {};
 let chatOpenTime = 0;
 let currentPushToastId = null;
 
-// ---- Instances ----
-const profileManager = new ns.ProfileManager();
-const behaviorLogger = new ns.BehaviorLogger();
-const friendAgent = new ns.FriendAgent(profileManager, behaviorLogger);
-const profileUpdater = new ns.ProfileUpdater(profileManager);
+// ---- Instances (created in init after JSON loaded) ----
+let profileManager;
+let behaviorLogger;
+let friendAgent;
+let profileUpdater;
 
 // ---- Helpers ----
 const $ = (id) => document.getElementById(id);
@@ -135,7 +135,7 @@ function showPushToast(push) {
   const textEl = $('pushText'); if (textEl) textEl.textContent = push.content;
   $('pushToast').classList.add('show');
   clearTimeout(window._pushTimer);
-  window._pushTimer = setTimeout(() => { $('pushToast').classList.remove('show'); currentPushToastId = null; }, 8000);
+  window._pushTimer = setTimeout(() => { $('pushToast').classList.remove('show'); currentPushToastId = null; }, friendAgent.toastDuration || 8000);
 }
 
 function dismissCurrentPush() {
@@ -396,7 +396,17 @@ friendAgent.onPushEnqueued = (push, contactId) => { if (contactId === currentCon
 friendAgent.onQueueChanged = () => { updateNotifyBadge(); renderContacts(); };
 
 // ---- Init ----
-function init() {
+async function init() {
+  // 从本地 JSON 文件加载画像和规则（HTTP 服务器）；失败时自动 fallback 到硬编码
+  const [defaultProfiles, agentRules] = await Promise.all([
+    ns.loadDefaultProfiles(),
+    ns.loadAgentRules()
+  ]);
+
+  profileManager = new ns.ProfileManager(defaultProfiles);
+  behaviorLogger = new ns.BehaviorLogger();
+  friendAgent = new ns.FriendAgent(profileManager, behaviorLogger, agentRules);
+  profileUpdater = new ns.ProfileUpdater(profileManager);
   C.forEach(c => profileManager.getProfile(c.id));
   renderContacts(); loadMessages();
   if (!messages.length) showOpening();

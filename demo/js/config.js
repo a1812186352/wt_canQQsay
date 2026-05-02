@@ -24,7 +24,31 @@ ns.CONTACTS = [
   },
 ];
 
-// ---- 默认画像模板 ----
+// ---- 从 JSON 文件加载画像模板 ----
+ns.loadDefaultProfiles = async function () {
+  const profileIds = (ns.CONTACTS || []).map(c => c.id);
+  const profiles = {};
+  for (const id of profileIds) {
+    try {
+      const res = await fetch(`profiles/${id}.json`);
+      if (res.ok) { profiles[id] = await res.json(); continue; }
+    } catch (e) { /* fetch 失败，用硬编码兜底 */ }
+    if (ns.DEFAULT_PROFILES[id]) {
+      profiles[id] = JSON.parse(JSON.stringify(ns.DEFAULT_PROFILES[id]));
+    }
+  }
+  return profiles;
+};
+
+ns.loadAgentRules = async function () {
+  try {
+    const res = await fetch('config/agent-rules.json');
+    if (res.ok) return await res.json();
+  } catch (e) { /* fetch 失败，用硬编码兜底 */ }
+  return null;
+};
+
+// ---- 硬编码画像模板（fallback：file:// 协议或 fetch 失败时使用） ----
 ns.DEFAULT_PROFILES = {
   xiaoming: {
     contact_id: 'xiaoming', contact_name: '小明', contact_type: 'friend',

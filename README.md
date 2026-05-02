@@ -16,19 +16,33 @@
 ## 快速开始
 
 ```bash
-# 1. 进入 demo 目录并启动本地服务
+# 1. 进入 demo 目录
 cd demo
+
+# 2. 启动本地服务（任选一种）
 python -m http.server 8080
-# 如果 python 不可用，用: npx serve demo
+# 或者：npx serve . -p 8080
 ```
 
 ```bash
-# 2. 浏览器打开
-# macOS:   open http://localhost:8080
-# Windows: start http://localhost:8080
+# 3. 浏览器打开
+# 地址：http://localhost:8080
 ```
 
+> **注意：必须在 demo 目录下启动服务器，否则 CSS 和 JS 会 404。**  
 > 无需构建、无需后端，纯静态 HTML/CSS/JS。未接入 API 时使用内置 Mock 数据即可体验全部功能。
+
+## 配置说明
+
+所有可修改的配置都以 JSON 文件形式存放在 `demo/` 下，**运行时直接加载，修改后刷新浏览器即可生效**：
+
+| 配置项 | 文件 | 说明 |
+|--------|------|------|
+| 联系人画像 | `profiles/*.json` | 沟通风格、偏好话题、个性总结，运行时 `fetch` 加载 |
+| 推送规则 | `config/agent-rules.json` | 推送频率、自优化参数、推送类型模板 |
+| 联系人列表 & Prompt | `js/config.js` | 新增联系人需同时在这里加 CONTACTS 条目和对应 JSON 画像 |
+
+> 如果 JSON 文件加载失败（如双击打开 HTML），自动 fallback 到 `config.js` 中的硬编码数据，页面仍可正常运行。
 
 ## 接入 LLM API
 

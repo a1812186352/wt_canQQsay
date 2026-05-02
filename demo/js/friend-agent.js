@@ -6,18 +6,39 @@ window.QQAgent = window.QQAgent || {};
 (function (ns) {
 
 ns.FriendAgent = class {
-  constructor(profileMgr, behaviorLog) {
+  constructor(profileMgr, behaviorLog, rules) {
     this.profiles = profileMgr;
     this.behavior = behaviorLog;
     this.queue = this._loadQueue();
     this.lastCheck = 0;
-    this.checkInterval = 60000;
-    this.maxDailyPushes = 5;
-    this.maxPerContact = 2;
+    this._applyRules(rules);
     this._timer = null;
     this.onStatusChange = null;    // (status)
     this.onPushEnqueued = null;    // (push, contactId)
     this.onQueueChanged = null;    // ()
+  }
+
+  _applyRules(rules) {
+    const r = (rules && rules.push_rules) ? rules.push_rules : {};
+    this.checkInterval = (r.check_interval_seconds || 60) * 1000;
+    this.maxDailyPushes = r.max_daily_pushes || 5;
+    this.maxPerContact = r.max_per_contact || 2;
+    this.toastDuration = (r.toast_duration_seconds || 8) * 1000;
+    this.cooldownAfterDismissHours = r.cooldown_after_dismiss_hours || 2;
+    if (rules && rules.self_optimize) {
+      const so = rules.self_optimize;
+      this.optimizeEnabled = so.enabled !== false;
+      this.badPenalty = so.bad_feedback_penalty || { reduce_daily_by: 1, reduce_per_contact_by: 1, multiply_interval_by: 2 };
+      this.goodBonus = so.good_feedback_bonus || { increase_daily_by: 1 };
+      this.minDaily = so.min_daily || 2;
+      this.maxInterval = so.max_interval_ms || 300000;
+    } else {
+      this.optimizeEnabled = true;
+      this.badPenalty = { reduce_daily_by: 1, reduce_per_contact_by: 1, multiply_interval_by: 2 };
+      this.goodBonus = { increase_daily_by: 1 };
+      this.minDaily = 2;
+      this.maxInterval = 300000;
+    }
   }
 
   start() {
@@ -122,9 +143,9 @@ ns.FriendAgent = class {
 
   _adjustStrategy(feedback) {
     if (feedback === 'bad') {
-      this.maxDailyPushes = Math.max(2, this.maxDailyPushes - 1);
-      this.maxPerContact = Math.max(1, this.maxPerContact - 1);
-      this.checkInterval = Math.min(300000, this.checkInterval * 2);
+      this.maxDailyPushes = Math.max(this.minDaily, this.maxDailyPushes - this.badPenalty.reduce_daily_by);
+      this.maxPerContact = Math.max(1, this.maxPerContact - this.badPenalty.reduce_per_contact_by);
+      this.checkInterval = Math.min(this.maxInterval, this.checkInterval * this.badPenalty.multiply_interval_by);
       this.stop(); this.start();
     }
   }

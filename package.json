@@ -8,6 +8,7 @@
     "test": "npx playwright test"
   },
   "devDependencies": {
-    "playwright": "^1.59.1"
+    "playwright": "^1.59.1",
+    "serve": "^14.2.0"
   }
 }
