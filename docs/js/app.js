@@ -265,7 +265,6 @@ function feedbackPush(pushId, fb) {
 
 // ---- Floating Ball ----
 function toggleFloatMenu(show) {
-  if (isAgentContact()) return;
   floatMenuOpen = show;
   const menu = $('floatMenu'), ball = $('floatBall');
   if (show) { menu.classList.add('open'); ball.textContent = '✕'; ball.classList.remove('magic', 'has-push'); }
@@ -280,6 +279,19 @@ function toggleFloatMenu(show) {
 async function runAgent(agentType) {
   toggleFloatMenu(false);
   if (isWaiting) return;
+  if (isAgentContact()) {
+    if (agentType === 'summary') {
+      // 小Q面板上：对所有授权联系人手动触发总结
+      var cids = Object.keys(XM.getSummary().contacts);
+      if (!cids.length) { showToast('暂无授权联系人'); return; }
+      cids.forEach(function(cid) { XM.forceSummarize(cid); });
+      renderXiaoQDashboard();
+      showToast('已对所有授权联系人进行内容总结');
+    } else {
+      showToast('请先选择一个联系人');
+    }
+    return;
+  }
   showToast(`正在执行：${{ smart_reply:'智能回复建议',text_optimize:'话术优化',summary:'精华提炼' }[agentType]}...`);
 
   let context;

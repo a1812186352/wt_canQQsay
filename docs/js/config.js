@@ -191,8 +191,19 @@ ns.XiaoQMemory = {
 
   // ── 主记忆 ──
   load() {
-    try { return JSON.parse(localStorage.getItem(this.MEM_KEY)) || this._empty(); }
-    catch (e) { return this._empty(); }
+    try {
+      var m = JSON.parse(localStorage.getItem(this.MEM_KEY));
+      if (!m) return this._empty();
+      // 迁移旧版数据
+      if (!m.version || m.version < 2) {
+        var migrated = this._empty();
+        if (m.observations) migrated.stats.total_messages = m.observations.length;
+        if (m.stats && m.stats.total_pushes) migrated.stats._old_pushes = m.stats.total_pushes;
+        this.save(migrated);
+        return migrated;
+      }
+      return m;
+    } catch (e) { return this._empty(); }
   },
   save(m) {
     m.last_updated = new Date().toISOString();
@@ -221,6 +232,7 @@ ns.XiaoQMemory = {
     this._saveBuf(contactId, buf);
 
     var m = this.load();
+    if (!m.contact_memories) m.contact_memories = {};
     if (!m.contact_memories[contactId]) {
       m.contact_memories[contactId] = { summaries: [], total_messages: 0, last_msg_ts: null };
     }
@@ -258,6 +270,7 @@ ns.XiaoQMemory = {
       (topics.length ? '，涉及' + topics.slice(0, 5).join('、') : '') +
       '。末尾话题：' + lastMsgs.join('；') + '。';
 
+    if (!m.contact_memories) m.contact_memories = {};
     if (!m.contact_memories[contactId]) {
       m.contact_memories[contactId] = { summaries: [], total_messages: buf.length, last_msg_ts: Date.now() };
     }
@@ -294,7 +307,8 @@ ns.XiaoQMemory = {
   getSummary() {
     var m = this.load();
     var contacts = {};
-    Object.keys(m.contact_memories).forEach(function (cid) {
+    var cms = m.contact_memories || {};
+    Object.keys(cms).forEach(function (cid) {
       var cm = m.contact_memories[cid];
       var c = (ns.CONTACTS || []).find(function (x) { return x.id === cid; });
       contacts[cid] = {
