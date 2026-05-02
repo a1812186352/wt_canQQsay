@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QQ Agent Demo</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app">
+  <!-- ====== Sidebar ====== -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span><span class="dot"></span>QQ Agent</span>
+      <div class="sidebar-header-actions">
+        <button class="icon-btn" title="推送通知" onclick="showPushPanel()" id="notifyBtn">
+          🔔<span class="badge" id="notifyBadge" style="display:none">0</span>
+        </button>
+        <button class="icon-btn" title="Agent API 设置" onclick="openSettings()">⚙</button>
+      </div>
+    </div>
+    <div class="contact-list" id="contactList"></div>
+    <div class="agent-panel">
+      <span class="fa-dot idle" id="faStatusDot"></span>
+      <span id="faStatus">好友Agent 加载中...</span>
+    </div>
+    <div class="sidebar-footer">
+      <button class="btn btn-default" style="flex:1;font-size:12px;" onclick="clearChat()">清空对话</button>
+    </div>
+  </div>
+
+  <!-- ====== Chat Area ====== -->
+  <div class="chat-area" id="chatArea">
+    <div class="chat-header">
+      <div class="chat-header-avatar" id="chatHeaderAvatar" style="background:#12b7f5;" title="悬停查看画像">
+        明
+        <div class="profile-tip" id="profileTip">加载中...</div>
+      </div>
+      <div class="chat-header-info">
+        <span id="chatTitle">小明</span>
+        <div class="chat-header-hint" id="chatHeaderHint"></div>
+      </div>
+    </div>
+    <div class="messages" id="messages"></div>
+
+    <!-- Push Toast -->
+    <div class="push-toast" id="pushToast">
+      <span class="push-icon-s" id="pushIcon">💡</span>
+      <span class="push-text-s" id="pushText"></span>
+      <button class="push-close" onclick="dismissCurrentPush()">✕</button>
+    </div>
+
+    <!-- Floating Ball -->
+    <div class="float-ball-wrap" id="floatBallWrap">
+      <div class="float-menu" id="floatMenu">
+        <button class="float-menu-btn" onclick="runAgent('smart_reply')"><span class="ico">💬</span> 智能回复建议</button>
+        <button class="float-menu-btn" onclick="runAgent('text_optimize')"><span class="ico">✨</span> 话术优化</button>
+        <button class="float-menu-btn" onclick="runAgent('summary')"><span class="ico">📋</span> 精华提炼</button>
+      </div>
+      <button class="float-ball magic" id="floatBall" title="Agent 智能助手">AI</button>
+    </div>
+
+    <div class="agent-toast" id="agentToast"></div>
+
+    <div class="input-area">
+      <textarea id="msgInput" rows="1" placeholder="输入消息..." onkeydown="handleKey(event)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">发送</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== Settings Modal ====== -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <h3>Agent API 配置 &amp; 系统管理</h3>
+
+    <div class="mock-note" id="mockNote">
+      <strong>当前使用 Mock 数据</strong> — 配置 API 后自动切换。<br>
+      配置文件：<code>js/config.js</code> / 画像模板：<code>profiles/*.json</code>
+    </div>
+
+    <label>API 地址</label>
+    <input type="url" id="apiUrl" placeholder="https://api.deepseek.com/v1/chat/completions">
+    <div class="hint">OpenAI 兼容接口。DeepSeek 填上述地址</div>
+
+    <label>API Key</label>
+    <input type="password" id="apiKey" placeholder="sk-...">
+
+    <label>模型名称</label>
+    <input type="text" id="modelName" placeholder="deepseek-chat">
+    <div class="hint">DeepSeek: deepseek-chat / 通义千问: qwen-plus</div>
+
+    <h4>当前联系人画像 <button class="btn btn-default" style="font-size:11px;padding:2px 8px;margin-left:8px;" onclick="resetProfile()">重置画像</button></h4>
+    <div class="profile-preview" id="profilePreview">选择联系人后显示...</div>
+
+    <h4>好友Agent</h4>
+    <div class="hint" id="faSettingsInfo">检查间隔：60秒 | 推送队列：0条</div>
+    <div class="hint">好友Agent 定时分析联系人行为，主动推送回复提醒、话题建议。</div>
+
+    <div class="modal-actions">
+      <button class="btn btn-danger" style="margin-right:auto;" onclick="resetAllData()">重置全部数据</button>
+      <button class="btn btn-default" onclick="closeSettings()">取消</button>
+      <button class="btn btn-primary" onclick="saveSettings()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script defer src="js/config.js"></script>
+<script defer src="js/profile-manager.js"></script>
+<script defer src="js/behavior-logger.js"></script>
+<script defer src="js/friend-agent.js"></script>
+<script defer src="js/profile-updater.js"></script>
+<script defer src="js/app.js"></script>
+</body>
+</html>

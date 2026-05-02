@@ -1,0 +1,13 @@
+{
+  "name": "qq-agent-demo",
+  "version": "1.0.0",
+  "description": "QQ智能Agent演示 — 内嵌画像系统、行为感知、主动推送的多Agent聊天助手",
+  "private": true,
+  "scripts": {
+    "start": "npx serve demo",
+    "test": "npx playwright test"
+  },
+  "devDependencies": {
+    "playwright": "^1.59.1"
+  }
+}
