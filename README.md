@@ -45,12 +45,11 @@ python -m http.server 8080
 
 ## 部署到 GitHub Pages
 
-已内置 `.github/workflows/pages.yml`，操作步骤：
-
-1. 打开 `https://github.com/<你的用户名>/wt_canQQsay/settings/pages`
-2. Source 选 **"GitHub Actions"**
-3. 推送代码到 `main` 分支即自动部署
-4. 访问 `https://<你的用户名>.github.io/wt_canQQsay/`
+1. 打开 `https://github.com/a1812186352/wt_canQQsay/settings/pages`
+2. **Source**: 选 `Deploy from a branch`
+3. **Branch**: 选 `main`，文件夹选 `/demo`
+4. 点 **Save**，等 1-2 分钟
+5. 访问 `https://a1812186352.github.io/wt_canQQsay/`
 
 ## 配置说明
 
