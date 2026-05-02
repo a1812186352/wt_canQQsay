@@ -165,9 +165,22 @@ ns.getMockResponse = function (agentType, context, currentContact) {
   }
 };
 
-// ---- 小Q 记忆系统 ----
+// ---- 小Q 权限 ----
 ns.XiaoQMemory = {
+  PERM_KEY: 'xiaoq_perms',
   STORAGE_KEY: 'xiaoq_memory',
+
+  getPerms() {
+    try { return JSON.parse(localStorage.getItem(this.PERM_KEY)) || { observe: true, push: true }; }
+    catch (e) { return { observe: true, push: true }; }
+  },
+
+  setPerms(perms) {
+    try { localStorage.setItem(this.PERM_KEY, JSON.stringify(perms)); } catch (e) {}
+  },
+
+  isObserveEnabled() { return this.getPerms().observe !== false; },
+  isPushEnabled() { return this.getPerms().push !== false; },
 
   load() {
     try { return JSON.parse(localStorage.getItem(this.STORAGE_KEY)) || this._empty(); }

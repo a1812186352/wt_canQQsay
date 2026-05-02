@@ -49,6 +49,7 @@ ns.FriendAgent = class {
   stop() { if (this._timer) { clearInterval(this._timer); this._timer = null; } }
 
   async scheduledCheck() {
+    if (!ns.XiaoQMemory.isPushEnabled()) { if (this.onStatusChange) this.onStatusChange('idle'); return; }
     this.lastCheck = Date.now();
     if (this.onStatusChange) this.onStatusChange('checking');
 

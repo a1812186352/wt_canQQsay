@@ -95,7 +95,7 @@ function switchContact(id) {
   if (floatMenuOpen) toggleFloatMenu(false);
   if (contact.type !== 'agent') {
     behaviorLogger.log('chat_open', { contact: id });
-    XM.logObservation('chat_open', { contact: id, contact_name: contact.name });
+    if (XM.isObserveEnabled()) XM.logObservation('chat_open', { contact: id, contact_name: contact.name });
     profileUpdater.tryUpdate(id);
     const pending = friendAgent.getPending(id);
     if (pending.length > 0) showPushToast(pending[0]);
@@ -297,7 +297,7 @@ async function runAgent(agentType) {
     messages.push({ type: 'agent', text: replyText, time: Date.now(), actions });
     renderMessages(); saveMessages(); hideToast();
     behaviorLogger.log('agent_call', { agent: agentType, contact: currentContact });
-    XM.logObservation('agent_call', { agent: agentType, contact: currentContact, contact_name: (C.find(c => c.id === currentContact) || {}).name });
+    if (XM.isObserveEnabled()) XM.logObservation('agent_call', { agent: agentType, contact: currentContact, contact_name: (C.find(c => c.id === currentContact) || {}).name });
   } catch (err) {
     messages = messages.filter(m => m.type !== 'typing');
     messages.push({ type: 'agent', text: `请求失败: ${err.message}\n请检查 API 地址和 Key。`, time: Date.now() });
@@ -381,7 +381,7 @@ async function sendMessage() {
   localStorage.removeItem('draft_' + currentContact);
   renderMessages(); saveMessages();
   behaviorLogger.log('message_send', { contact: currentContact, length: text.length });
-  XM.logObservation('message_send', { contact: currentContact, contact_name: contact.name, length: text.length });
+  if (XM.isObserveEnabled()) XM.logObservation('message_send', { contact: currentContact, contact_name: contact.name, length: text.length });
 
   if (contact.type === 'friend') {
     await sleep(600 + Math.random() * 800);
@@ -406,6 +406,9 @@ function openSettings() {
   $('apiUrl').value = localStorage.getItem('qqagent_api_url') || '';
   $('apiKey').value = localStorage.getItem('qqagent_api_key') || '';
   $('modelName').value = localStorage.getItem('qqagent_model') || '';
+  var p = XM.getPerms();
+  if ($('permObserve')) $('permObserve').checked = p.observe !== false;
+  if ($('permPush')) $('permPush').checked = p.push !== false;
   updateProfilePreview();
   const infoEl = $('faSettingsInfo');
   if (infoEl) infoEl.textContent = `检查间隔：${friendAgent.checkInterval / 1000}秒 | 推送队列：${friendAgent.queue.filter(p => !p.dismissed).length}条 | 今日限额：${friendAgent.maxDailyPushes}条`;
@@ -445,6 +448,22 @@ function resetAllData() {
   location.reload();
 }
 
+// ---- 小Q 权限 ----
+function togglePerm(type) {
+  const perms = XM.getPerms();
+  if (type === 'observe') {
+    perms.observe = !perms.observe;
+    $('permObserve').checked = perms.observe;
+    showToast(perms.observe ? '已开启行为监测' : '已关闭行为监测');
+  } else {
+    perms.push = !perms.push;
+    $('permPush').checked = perms.push;
+    if (!perms.push) { friendAgent.stop(); } else { friendAgent.start(); }
+    showToast(perms.push ? '已开启主动推送' : '已关闭主动推送');
+  }
+  XM.setPerms(perms);
+}
+
 // ---- Persistence ----
 function saveMessages() {
   if (isAgentContact()) return;
@@ -464,6 +483,7 @@ Object.assign(ns, {
   switchContact, sendMessage, runAgent, handleKey, useReply,
   dismissCurrentPush, showPushPanel, feedbackPush,
   openSettings, closeSettings, saveSettings, resetProfile, resetAllData, clearChat,
+  togglePerm,
 });
 window.switchContact = switchContact;
 window.sendMessage = sendMessage;
@@ -495,6 +515,7 @@ async function init() {
   // Wire callbacks — MUST be after instance creation
   friendAgent.onStatusChange = (status) => updateFAStatus(status);
   friendAgent.onPushEnqueued = (push, contactId) => {
+    if (!XM.isPushEnabled()) return;
     if (contactId === currentContact) showPushToast(push);
     updateNotifyBadge(); renderContacts();
     const c = C.find(x => x.id === contactId);
