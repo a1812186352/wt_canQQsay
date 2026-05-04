@@ -124,7 +124,7 @@ function renderXiaoQDashboard() {
   const container = $('messages'); if (!container) return;
   const summary = XM.getSummary();
   const mem = XM.load();
-  const pushes = (mem.contact_memories._pushes || []).slice(-10).reverse();
+  const pushes = ((mem.contact_memories || {})._pushes || []).slice(-10).reverse();
 
   var contactCards = '';
   var contactEntries = Object.entries(summary.contacts);
@@ -416,7 +416,7 @@ async function sendMessage() {
   }
 }
 
-function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function handleKey(e) { if (e.key === 'Enter' && !e.ctrlKey) { e.preventDefault(); sendMessage(); } }
 
 // ---- Settings ----
 function openSettings() {

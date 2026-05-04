@@ -220,6 +220,12 @@ ns.XiaoQMemory = {
     try {
       var m = JSON.parse(localStorage.getItem(this.MEM_KEY));
       if (!m) return this._empty();
+      if (!m.contact_memories || typeof m.contact_memories !== 'object' || Array.isArray(m.contact_memories)) {
+        m.contact_memories = {};
+      }
+      if (!m.stats || typeof m.stats !== 'object') {
+        m.stats = { total_messages: 0, total_summaries: 0 };
+      }
       // 迁移旧版数据
       if (!m.version || m.version < 2) {
         var migrated = this._empty();
