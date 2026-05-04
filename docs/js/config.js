@@ -370,9 +370,8 @@ ns.XiaoQMemory = {
   },
 
   isPushEnabled() {
-    // 至少一个联系人的主动推送开启（兼容旧 friend-agent）
     var p = this._allPerms();
-    return Object.keys(p).some(function (k) { return p[k].push !== false; });
+    return Object.keys(p).some(function (k) { return p[k].reminder_enabled === true; });
   },
 };
 

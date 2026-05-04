@@ -97,19 +97,11 @@ ns.FriendAgent = class {
       } catch (e) { /* fall through */ }
     }
 
-    // Rule-based fallback
-    var otherMsgs = messages.filter(function(m) { return m.type === 'other'; });
-    var selfMsgs = messages.filter(function(m) { return m.type === 'self'; });
-    if (otherMsgs.length > selfMsgs.length && contact.type === 'friend') {
-      return {
-        should_push: true, push_type: 'reply_suggest', priority: 'medium',
-        content: contact.name + ' 给你发了消息，用悬浮球中的智能回复建议来快速回复',
-      };
-    }
-
-    // 未回复提醒
+    // Rule-based fallback — 所有推送受 reminder_enabled 开关控制
     var perms = ns.XiaoQMemory.getPerms(contact.id);
     if (perms.reminder_enabled && contact.type === 'friend') {
+      var otherMsgs = messages.filter(function(m) { return m.type === 'other'; });
+      var selfMsgs = messages.filter(function(m) { return m.type === 'self'; });
       var reminderState = ns.XiaoQMemory.getReminderState(contact.id);
       var lastOtherTs = otherMsgs.length > 0 ? otherMsgs[otherMsgs.length - 1].time : 0;
       var lastSelfTs = reminderState.last_self_msg_ts || 0;
