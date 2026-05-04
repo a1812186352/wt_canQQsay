@@ -98,14 +98,33 @@ ns.FriendAgent = class {
     }
 
     // Rule-based fallback
-    const otherMsgs = messages.filter(m => m.type === 'other');
-    const selfMsgs = messages.filter(m => m.type === 'self');
+    var otherMsgs = messages.filter(function(m) { return m.type === 'other'; });
+    var selfMsgs = messages.filter(function(m) { return m.type === 'self'; });
     if (otherMsgs.length > selfMsgs.length && contact.type === 'friend') {
       return {
         should_push: true, push_type: 'reply_suggest', priority: 'medium',
-        content: `${contact.name} 给你发了消息，用悬浮球中的智能回复建议来快速回复`,
+        content: contact.name + ' 给你发了消息，用悬浮球中的智能回复建议来快速回复',
       };
     }
+
+    // 未回复提醒
+    var perms = ns.XiaoQMemory.getPerms(contact.id);
+    if (perms.reminder_enabled && contact.type === 'friend') {
+      var reminderState = ns.XiaoQMemory.getReminderState(contact.id);
+      var lastOtherTs = otherMsgs.length > 0 ? otherMsgs[otherMsgs.length - 1].time : 0;
+      var lastSelfTs = reminderState.last_self_msg_ts || 0;
+      var lastReadTs = reminderState.last_read_ts || 0;
+      var reminderMs = (perms.reminder_minutes || 30) * 60 * 1000;
+
+      if (lastOtherTs > lastSelfTs && lastReadTs > 0 && (Date.now() - lastReadTs) > reminderMs) {
+        var elapsedMin = Math.round((Date.now() - lastReadTs) / 60000);
+        return {
+          should_push: true, push_type: 'reminder', priority: 'medium',
+          content: '你有一条来自' + contact.name + '的消息还没回复哦，已经' + elapsedMin + '分钟了',
+        };
+      }
+    }
+
     return { should_push: false };
   }
 

@@ -79,6 +79,9 @@ function switchContact(id) {
 
   autoReplyIndex[id] = autoReplyIndex[id] || 0;
   chatOpenTime = Date.now();
+  if (contact.type !== 'agent') {
+    XM.markRead(id);
+  }
   restoreDraft(id);
 
   // 小Q 显示记忆面板，其他联系人显示聊天
@@ -397,6 +400,7 @@ async function sendMessage() {
   renderMessages(); saveMessages();
   behaviorLogger.log('message_send', { contact: currentContact, length: text.length });
   XM.bufferMessage(currentContact, { role: 'self', text: text });
+  XM.markReplied(currentContact);
 
   if (contact.type === 'friend') {
     await sleep(600 + Math.random() * 800);
@@ -501,6 +505,28 @@ function renderPermSection() {
         '<span class="perm-desc">累计多少条消息后触发自动总结</span>' +
       '</div>' +
       '<input type="number" id="xqContextLen" value="' + (perms.context_length || 15) + '" min="5" max="100" style="width:60px;text-align:center;border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:14px;">' +
+    '</div>' +
+    '<div class="perm-row">' +
+      '<div class="perm-info">' +
+        '<span class="perm-label">未回复消息提醒</span>' +
+        '<span class="perm-desc">开启后小Q会在你已读但超时未回复时主动提醒</span>' +
+      '</div>' +
+      '<label class="toggle">' +
+        '<input type="checkbox" id="permReminder" ' + (perms.reminder_enabled ? 'checked' : '') + ' onchange="QQAgent.toggleReminderPerm()">' +
+        '<span class="toggle-slider"></span>' +
+      '</label>' +
+    '</div>' +
+    '<div class="perm-row" id="reminderMinutesRow" style="border:none;display:' + (perms.reminder_enabled ? '' : 'none') + ';">' +
+      '<div class="perm-info">' +
+        '<span class="perm-label">提醒时长</span>' +
+        '<span class="perm-desc">已读消息后超过此时间未回复即提醒</span>' +
+      '</div>' +
+      '<select id="reminderMinutes" onchange="QQAgent.setReminderMinutes()" style="border:1px solid #ddd;border-radius:6px;padding:4px 8px;font-size:14px;">' +
+        '<option value="10"' + (perms.reminder_minutes === 10 ? ' selected' : '') + '>10 分钟</option>' +
+        '<option value="15"' + (perms.reminder_minutes === 15 ? ' selected' : '') + '>15 分钟</option>' +
+        '<option value="30"' + (perms.reminder_minutes === 30 ? ' selected' : '') + '>30 分钟</option>' +
+        '<option value="60"' + (perms.reminder_minutes === 60 ? ' selected' : '') + '>60 分钟</option>' +
+      '</select>' +
     '</div>';
 }
 
@@ -520,6 +546,22 @@ function toggleContactPerm(type) {
   }
   XM.setPerms(currentContact, perms);
   renderPermSection();
+}
+
+function toggleReminderPerm() {
+  var perms = XM.getPerms(currentContact);
+  perms.reminder_enabled = !perms.reminder_enabled;
+  XM.setPerms(currentContact, perms);
+  renderPermSection();
+  showToast(perms.reminder_enabled ? '已开启未回复消息提醒（' + (perms.reminder_minutes || 30) + '分钟）' : '已关闭未回复消息提醒');
+}
+
+function setReminderMinutes() {
+  var el = document.getElementById('reminderMinutes');
+  var perms = XM.getPerms(currentContact);
+  perms.reminder_minutes = parseInt(el.value) || 30;
+  XM.setPerms(currentContact, perms);
+  showToast('提醒时长已设为 ' + perms.reminder_minutes + ' 分钟');
 }
 
 function updateFAInfo() {
@@ -579,7 +621,7 @@ Object.assign(ns, {
   switchContact, sendMessage, runAgent, handleKey, useReply,
   dismissCurrentPush, showPushPanel, feedbackPush,
   openSettings, closeSettings, saveSettings, resetProfile, resetAllData, clearChat,
-  toggleContactPerm,
+  toggleContactPerm, toggleReminderPerm, setReminderMinutes,
 });
 window.switchContact = switchContact;
 window.sendMessage = sendMessage;
@@ -595,6 +637,8 @@ window.saveSettings = saveSettings;
 window.resetProfile = resetProfile;
 window.resetAllData = resetAllData;
 window.clearChat = clearChat;
+window.toggleReminderPerm = toggleReminderPerm;
+window.setReminderMinutes = setReminderMinutes;
 
 // ---- Init ----
 async function init() {

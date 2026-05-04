@@ -170,6 +170,7 @@ ns.XiaoQMemory = {
   PERM_KEY: 'xiaoq_contact_perms',
   MEM_KEY: 'xiaoq_memory',
   BUF_PREFIX: 'xiaoq_buf_',
+  REMINDER_KEY: 'xiaoq_reminder_state',
 
   // ── 按联系人权限 ──
   _allPerms() {
@@ -180,7 +181,7 @@ ns.XiaoQMemory = {
 
   getPerms(contactId) {
     var p = this._allPerms();
-    return p[contactId] || { observe: true, auto_summarize: true, context_length: 15 };
+    return p[contactId] || { observe: true, auto_summarize: true, context_length: 15, reminder_enabled: false, reminder_minutes: 30 };
   },
   setPerms(contactId, perms) {
     var p = this._allPerms();
@@ -188,6 +189,31 @@ ns.XiaoQMemory = {
     this._savePerms(p);
   },
   isObserving(contactId) { return this.getPerms(contactId).observe !== false; },
+
+  _reminderState() {
+    try { return JSON.parse(localStorage.getItem(this.REMINDER_KEY)) || {}; }
+    catch (e) { return {}; }
+  },
+  _saveReminderState(s) { try { localStorage.setItem(this.REMINDER_KEY, JSON.stringify(s)); } catch (e) {} },
+
+  markRead(contactId) {
+    var s = this._reminderState();
+    if (!s[contactId]) s[contactId] = {};
+    s[contactId].last_read_ts = Date.now();
+    this._saveReminderState(s);
+  },
+
+  markReplied(contactId) {
+    var s = this._reminderState();
+    if (!s[contactId]) s[contactId] = {};
+    s[contactId].last_self_msg_ts = Date.now();
+    this._saveReminderState(s);
+  },
+
+  getReminderState(contactId) {
+    var s = this._reminderState();
+    return s[contactId] || { last_read_ts: null, last_self_msg_ts: null };
+  },
 
   // ── 主记忆 ──
   load() {
