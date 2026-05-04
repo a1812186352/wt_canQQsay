@@ -669,7 +669,12 @@ async function init() {
 
   // 默认显示小Q面板，隐藏输入框
   if (isAgentContact()) {
-    renderXiaoQDashboard();
+    try {
+      renderXiaoQDashboard();
+    } catch (e) {
+      console.error('renderXiaoQDashboard 失败:', e);
+      $('messages').innerHTML = '<div class="xq-empty" style="padding:40px;text-align:center;">小Q面板加载失败，请尝试清除浏览器数据后刷新页面</div>';
+    }
     $('msgInput').style.display = 'none';
     $('sendBtn').style.display = 'none';
   } else { renderMessages(); }

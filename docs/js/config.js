@@ -226,6 +226,16 @@ ns.XiaoQMemory = {
       if (!m.stats || typeof m.stats !== 'object') {
         m.stats = { total_messages: 0, total_summaries: 0 };
       }
+      // 修复损坏的联系人条目
+      var cms2 = m.contact_memories;
+      Object.keys(cms2).forEach(function(k) {
+        var entry = cms2[k];
+        if (!entry || typeof entry !== "object") { cms2[k] = { summaries: [], total_messages: 0, last_msg_ts: null }; }
+        else {
+          if (!Array.isArray(entry.summaries)) entry.summaries = [];
+          if (typeof entry.total_messages !== "number") entry.total_messages = 0;
+        }
+      });
       // 迁移旧版数据
       if (!m.version || m.version < 2) {
         var migrated = this._empty();
@@ -341,13 +351,15 @@ ns.XiaoQMemory = {
     var contacts = {};
     var cms = m.contact_memories || {};
     Object.keys(cms).forEach(function (cid) {
+      if (cid === "_pushes") return;
       var cm = m.contact_memories[cid];
+      if (!cm || typeof cm !== "object") return;
       var c = (ns.CONTACTS || []).find(function (x) { return x.id === cid; });
       contacts[cid] = {
         name: c ? c.name : cid,
-        total_messages: cm.total_messages,
-        summaries: cm.summaries.length,
-        last_active: cm.last_msg_ts
+        total_messages: cm.total_messages || 0,
+        summaries: (cm.summaries || []).length,
+        last_active: cm.last_msg_ts || null
       };
     });
     return {
