@@ -71,34 +71,38 @@ ns.FriendAgent = class {
   }
 
   async _analyzeContact(contact) {
-    const profile = this.profiles.getProfile(contact.id);
-    const stats = this.behavior.getStats(contact.id, 24);
-    const messages = JSON.parse(localStorage.getItem('qqagent_msgs_' + contact.id) || '[]');
+    var perms = ns.XiaoQMemory.getPerms(contact.id);
+    var profile = this.profiles.getProfile(contact.id);
+    var stats = this.behavior.getStats(contact.id, 24);
+    var messages = JSON.parse(localStorage.getItem('qqagent_msgs_' + contact.id) || '[]');
 
-    if (contact.type === 'friend' && messages.filter(m => m.type === 'other').length === 0) {
+    if (contact.type === 'friend' && messages.filter(function(m) { return m.type === 'other'; }).length === 0) {
       return { should_push: false };
     }
 
-    const apiUrl = localStorage.getItem('qqagent_api_url');
+    var apiUrl = localStorage.getItem('qqagent_api_url');
     if (apiUrl) {
       try {
-        const prompt = ns.buildFriendAnalysisPrompt(profile, stats, messages);
-        const res = await fetch(apiUrl, {
+        var prompt = ns.buildFriendAnalysisPrompt(profile, stats, messages);
+        var res = await fetch(apiUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('qqagent_api_key') || ''}` },
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('qqagent_api_key') || '') },
           body: JSON.stringify({ model: localStorage.getItem('qqagent_model') || 'deepseek-chat', messages: [{ role: 'user', content: prompt }], temperature: 0.3 }),
         });
         if (res.ok) {
-          const data = await res.json();
-          let c = data.choices?.[0]?.message?.content || '';
+          var data = await res.json();
+          var c = data.choices?.[0]?.message?.content || '';
           c = c.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?\s*```\s*$/, '');
-          return JSON.parse(c);
+          var decision = JSON.parse(c);
+          if (decision.should_push && !perms.reminder_enabled) {
+            return { should_push: false };
+          }
+          return decision;
         }
       } catch (e) { /* fall through */ }
     }
 
     // Rule-based fallback — 所有推送受 reminder_enabled 开关控制
-    var perms = ns.XiaoQMemory.getPerms(contact.id);
     if (perms.reminder_enabled && contact.type === 'friend') {
       var otherMsgs = messages.filter(function(m) { return m.type === 'other'; });
       var selfMsgs = messages.filter(function(m) { return m.type === 'self'; });
